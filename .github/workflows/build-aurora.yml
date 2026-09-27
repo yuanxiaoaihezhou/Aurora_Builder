@@ -1,0 +1,54 @@
+name: Build Aurora v2.2.4 AppImage
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Aurora v2.2.4
+        uses: actions/checkout@v4
+        with:
+          repository: Daturaxoxo/Aurora
+          ref: v2.2.4
+          path: Aurora
+
+      - name: Install host build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman curl
+
+          curl -fL \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage \
+            -o /tmp/appimagetool
+
+          chmod +x /tmp/appimagetool
+          sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
+
+      - name: Build Aurora AppImage
+        working-directory: Aurora
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          chmod +x packaging/build-appimage.sh
+          ./packaging/build-appimage.sh
+
+      - name: Generate SHA256
+        working-directory: Aurora
+        run: |
+          sha256sum Aurora-x86_64.AppImage \
+            | tee Aurora-x86_64.AppImage.sha256
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aurora-v2.2.4-Linux-selfbuild
+          path: |
+            Aurora/Aurora-x86_64.AppImage
+            Aurora/Aurora-x86_64.AppImage.sha256
+          retention-days: 3
